@@ -45,7 +45,7 @@ typedef struct _PhotosPreviewViewClass PhotosPreviewViewClass;
 
 GType                  photos_preview_view_get_type               (void) G_GNUC_CONST;
 
-GtkWidget             *photos_preview_view_new                    (GtkOverlay *overlay);
+GtkWidget             *photos_preview_view_new                    (void);
 
 void                   photos_preview_view_set_model              (PhotosPreviewView *self,
                                                                    GtkTreeModel *model,

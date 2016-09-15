@@ -48,7 +48,6 @@ struct _PhotosPreviewView
   GAction *draw;
   GCancellable *cancellable;
   GeglNode *node;
-  GtkWidget *overlay;
   GtkWidget *palette;
   GtkWidget *revealer;
   GtkWidget *stack;
@@ -61,12 +60,6 @@ struct _PhotosPreviewView
 struct _PhotosPreviewViewClass
 {
   GtkBinClass parent_class;
-};
-
-enum
-{
-  PROP_0,
-  PROP_OVERLAY
 };
 
 
@@ -646,39 +639,6 @@ photos_preview_view_finalize (GObject *object)
 
 
 static void
-photos_preview_view_constructed (GObject *object)
-{
-  PhotosPreviewView *self = PHOTOS_PREVIEW_VIEW (object);
-
-  G_OBJECT_CLASS (photos_preview_view_parent_class)->constructed (object);
-
-  self->nav_buttons = photos_preview_nav_buttons_new (self, GTK_OVERLAY (self->overlay));
-  g_signal_connect_swapped (self->nav_buttons, "load-next", G_CALLBACK (photos_preview_view_navigate_next), self);
-  g_signal_connect_swapped (self->nav_buttons, "load-previous", G_CALLBACK (photos_preview_view_navigate_previous), self);
-
-  gtk_widget_show_all (GTK_WIDGET (self));
-}
-
-
-static void
-photos_preview_view_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
-{
-  PhotosPreviewView *self = PHOTOS_PREVIEW_VIEW (object);
-
-  switch (prop_id)
-    {
-    case PROP_OVERLAY:
-      self->overlay = GTK_WIDGET (g_value_dup_object (value));
-      break;
-
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      break;
-    }
-}
-
-
-static void
 photos_preview_view_init (PhotosPreviewView *self)
 {
   GAction *action;
@@ -710,6 +670,10 @@ photos_preview_view_init (PhotosPreviewView *self)
 
   overlay = gtk_overlay_new ();
   gtk_container_add (GTK_CONTAINER (grid), overlay);
+
+  self->nav_buttons = photos_preview_nav_buttons_new (self, GTK_OVERLAY (overlay));
+  g_signal_connect_swapped (self->nav_buttons, "load-next", G_CALLBACK (photos_preview_view_navigate_next), self);
+  g_signal_connect_swapped (self->nav_buttons, "load-previous", G_CALLBACK (photos_preview_view_navigate_previous), self);
 
   self->stack = gtk_stack_new ();
   gtk_widget_set_hexpand (self->stack, TRUE);
@@ -767,6 +731,8 @@ photos_preview_view_init (PhotosPreviewView *self)
 
   action = g_action_map_lookup_action (G_ACTION_MAP (app), "sharpen-current");
   g_signal_connect_object (action, "activate", G_CALLBACK (photos_preview_view_sharpen), self, G_CONNECT_SWAPPED);
+
+  gtk_widget_show_all (GTK_WIDGET (self));
 }
 
 
@@ -775,25 +741,15 @@ photos_preview_view_class_init (PhotosPreviewViewClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
 
-  object_class->constructed = photos_preview_view_constructed;
   object_class->dispose = photos_preview_view_dispose;
   object_class->finalize = photos_preview_view_finalize;
-  object_class->set_property = photos_preview_view_set_property;
-
-  g_object_class_install_property (object_class,
-                                   PROP_OVERLAY,
-                                   g_param_spec_object ("overlay",
-                                                        "GtkOverlay object",
-                                                        "The stack overlay widget",
-                                                        GTK_TYPE_OVERLAY,
-                                                        G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE));
 }
 
 
 GtkWidget *
-photos_preview_view_new (GtkOverlay *overlay)
+photos_preview_view_new (void)
 {
-  return g_object_new (PHOTOS_TYPE_PREVIEW_VIEW, "overlay", overlay, NULL);
+  return g_object_new (PHOTOS_TYPE_PREVIEW_VIEW, NULL);
 }
 
 
