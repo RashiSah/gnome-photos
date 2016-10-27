@@ -172,6 +172,8 @@ gnome_photos_SOURCES = \
 	photos-print-setup.h \
 	photos-properties-dialog.c \
 	photos-properties-dialog.h \
+	photos-properties-sidebar.c \
+	photos-properties-sidebar.h \
 	photos-query.c \
 	photos-query.h \
 	photos-query-builder.h \
@@ -279,6 +281,7 @@ EXTRA_DIST = \
 	photos-marshalers.list \
 	photos-menus.ui \
 	photos-preview-menu.ui \
+	photos-properties-sidebar.ui \
 	photos-selection-menu.ui \
 	photos-selection-toolbar.ui \
 	photos-share-dialog.ui \
