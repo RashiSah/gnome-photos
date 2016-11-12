@@ -18,14 +18,20 @@
  * 02110-1301, USA.
  */
 
+#include "photos-base-manager.h"
 #include "photos-properties-sidebar.h"
+#include "photos-fetch-collections-job.h"
+#include "photos-filterable.h"
+#include "photos-search-context.h"
 
 struct _PhotosPropertiesSidebar
 {
   GtkScrolledWindow parent_instance;
   GtkWidget *albums_list_box;
   GtkWidget *description_text_view;
+  GtkWidget *source_grid;
   GtkWidget *title_entry;
+  PhotosBaseItem *item;
 };
 
 struct _PhotosPropertiesSidebarClass
@@ -72,6 +78,51 @@ photos_properties_sidebar_get_property (GObject    *object,
 }
 
 static void
+photos_properties_sidebar_on_collection_fetched (GObject *source_object,
+                                                 GAsyncResult *res,
+                                                 gpointer user_data)
+{
+  GApplication *app;
+  GError *error = NULL;
+  GList *collection_ids;
+  GList *l;
+  PhotosBaseManager *item_mngr;
+  PhotosFetchCollectionsJob *job = PHOTOS_FETCH_COLLECTIONS_JOB (source_object);
+  PhotosPropertiesSidebar *self = PHOTOS_PROPERTIES_SIDEBAR (user_data);
+  PhotosSearchContextState *state;
+
+  collection_ids = photos_fetch_collections_job_finish (job, res, &error);
+  if (error != NULL)
+    {
+      g_warning ("Unable to fetch collections: %s", error->message);
+      g_error_free (error);
+    }
+
+    app = g_application_get_default ();
+    state = photos_search_context_get_state (PHOTOS_SEARCH_CONTEXT (app));
+    item_mngr = g_object_ref (state->item_mngr);
+
+    for (l = collection_ids; l != NULL; l = g_list_next (l))
+      {
+        const gchar *collection_name;
+        const gchar *collection_id = l->data;
+        PhotosBaseItem *collection;
+
+        collection = PHOTOS_BASE_ITEM (photos_base_manager_get_object_by_id (item_mngr, collection_id));
+        // avoid to show its folder as a collection
+        if(!photos_base_item_is_collection (collection))
+          continue;
+
+        collection_name = photos_base_item_get_name (collection);
+        GtkWidget *label = gtk_label_new (collection_name);
+        gtk_widget_show (label);
+        gtk_list_box_insert (GTK_LIST_BOX (self->albums_list_box), label, 0);
+      }
+
+  g_object_unref (self);
+}
+
+static void
 photos_properties_sidebar_set_property (GObject      *object,
                                         guint         prop_id,
                                         const GValue *value,
@@ -99,13 +150,64 @@ photos_properties_sidebar_class_init (PhotosPropertiesSidebarClass *klass)
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Photos/properties-sidebar.ui");
   gtk_widget_class_bind_template_child (widget_class, PhotosPropertiesSidebar, albums_list_box);
   gtk_widget_class_bind_template_child (widget_class, PhotosPropertiesSidebar, description_text_view);
+  gtk_widget_class_bind_template_child (widget_class, PhotosPropertiesSidebar, source_grid);
   gtk_widget_class_bind_template_child (widget_class, PhotosPropertiesSidebar, title_entry);
 }
 
 static void
 photos_properties_sidebar_init (PhotosPropertiesSidebar *self)
 {
+  GtkWidget *label;
+
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  //gtk_list_box_set_placeholder (GTK_LIST_BOX (self->albums_list_box), gtk_label_new ("test"));
+  //TODO
+  label = gtk_label_new("No albums");
+  gtk_widget_show (label);
+  gtk_list_box_set_placeholder (GTK_LIST_BOX (self->albums_list_box), label);
+
+}
+
+void
+photos_properties_sidebar_set_item (PhotosPropertiesSidebar *self, PhotosBaseItem *item)
+{
+  GtkWidget *source_widget;
+  const gchar *item_id;
+
+
+  if (self->item != NULL)
+    {
+      GList *children;
+      GList *l;
+
+      g_object_unref (self->item);
+
+      children = gtk_container_get_children (GTK_CONTAINER (self->albums_list_box));
+      for(l = children; l != NULL; l = g_list_next(l))
+        gtk_container_remove (GTK_CONTAINER (self->albums_list_box), GTK_WIDGET (l->data));
+
+      children = gtk_container_get_children (GTK_CONTAINER (self->source_grid));
+      for(l = children; l != NULL; l = g_list_next(l))
+        gtk_container_remove (GTK_CONTAINER (self->source_grid), GTK_WIDGET (l->data));
+
+      //TODO clear
+    }
+
+  self->item = g_object_ref (item);
+
+
+  gtk_entry_set_text (GTK_ENTRY (self->title_entry), photos_base_item_get_name_with_fallback (item));
+
+  item_id = photos_filterable_get_id (PHOTOS_FILTERABLE (item));
+  PhotosFetchCollectionsJob *collection_fetcher = photos_fetch_collections_job_new (item_id);
+  photos_fetch_collections_job_run (collection_fetcher,
+                                    NULL,
+                                    photos_properties_sidebar_on_collection_fetched,
+                                    g_object_ref (self));
+  g_object_unref (collection_fetcher);
+
+  source_widget = photos_base_item_get_source_widget (item);
+  gtk_widget_show (GTK_WIDGET (source_widget));
+  gtk_container_add (GTK_CONTAINER(self->source_grid), source_widget);
+
 }

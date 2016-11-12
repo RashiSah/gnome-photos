@@ -30,6 +30,9 @@ G_DECLARE_FINAL_TYPE (PhotosPropertiesSidebar, photos_properties_sidebar, PHOTOS
 
 GtkWidget             *photos_properties_sidebar_new                    (void);
 
+void                   photos_properties_sidebar_set_item               (PhotosPropertiesSidebar *self,
+                                                                         PhotosBaseItem *item);
+
 G_END_DECLS
 
 #endif /* PHOTOS_PROPERTIES_SIDEBAR_H */
