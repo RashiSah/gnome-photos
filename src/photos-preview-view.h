@@ -28,6 +28,8 @@
 #include <gegl.h>
 #include <gtk/gtk.h>
 
+#include "photos-base-item.h"
+
 G_BEGIN_DECLS
 
 #define PHOTOS_TYPE_PREVIEW_VIEW (photos_preview_view_get_type ())
@@ -46,6 +48,8 @@ typedef struct _PhotosPreviewViewClass PhotosPreviewViewClass;
 GType                  photos_preview_view_get_type               (void) G_GNUC_CONST;
 
 GtkWidget             *photos_preview_view_new                    (void);
+
+void                   photos_preview_view_set_item               (PhotosPreviewView *self, PhotosBaseItem *item);
 
 void                   photos_preview_view_set_model              (PhotosPreviewView *self,
                                                                    GtkTreeModel *model,
